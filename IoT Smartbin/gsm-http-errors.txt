@@ -1,0 +1,5 @@
+600 Not HTTP PDU
+601 Network Error
+602 No memory
+603 DNS Error
+604 Stack Busy
