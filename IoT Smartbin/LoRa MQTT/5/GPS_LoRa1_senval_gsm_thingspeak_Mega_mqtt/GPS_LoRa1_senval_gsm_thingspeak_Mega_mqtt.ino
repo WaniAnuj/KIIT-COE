@@ -13,12 +13,12 @@ static void smartdelay(unsigned long ms);
 
 int LED=13;
 
-//char DeviceID[10]="a840418"; //DeviceID or Device identifier in GPSWOX.com
+int node_id = 4652;
 
 String datastring1="";
 String datastring2="";
 String datastring3="";
-uint8_t datasend[50];    //Storage  longtitude,latitude and altitude
+uint8_t datasend[100];    //Storage  longtitude,latitude and altitude
 
 char gps_lon[20]={"\0"};  //Storage GPS info
 char gps_lat[20]={"\0"}; //Storage latitude
@@ -38,7 +38,7 @@ int pir_count;
 int G_sharp ;
 
 int upload_flag = 1;
-char url[80];
+char url[100];
 unsigned long previous , present;
 
 void setup()
@@ -50,7 +50,7 @@ void setup()
   // initialize both serial ports:
   Serial.begin(9600);  // Serial to print out GPS info in Arduino IDE
   Serial1.begin(9600);       // Serial1 port to get GPS data. 
-  while (!Serial);
+//  while (!Serial);
 
   if (!rf95.init()) {  // Defaults after init are 434.0MHz, 13dBm, Bw = 125 kHz, Cr = 4/5, Sf = 128chips/symbol, CRC on
     Serial.println("Starting LoRa failed!");
@@ -63,6 +63,7 @@ void setup()
   rf95.setSpreadingFactor(7);
   rf95.setSignalBandwidth(125E3);
   rf95.setCodingRate4(5);
+  rf95.setSyncWord(0x14);
   rf95.setTxPower(20,false);
   
   Serial.println("Ready to send!");
@@ -96,80 +97,26 @@ void loop()
   float volts = analogRead(A2);//*0.0048828125;   
   float distance = 65*pow(volts, -1.10);  
   G_sharp = distance*100;
-  
-
-
-//switch (bGlobalErr)
-//   {
-//     case 0:
-//       Serial.print("Current humdity = ");
-//       Serial.print(dht_dat[0], DEC);
-//       Serial.print(".");
-//       Serial.print(dht_dat[1], DEC);
-//       Serial.print("%  ");
-//       Serial.print("temperature = ");
-//       Serial.print(dht_dat[2], DEC);
-//       Serial.print(".");
-//       Serial.print(dht_dat[3], DEC);
-//       Serial.println("C  ");
-//       strcat(gps_lon,",");
-//       strcat(gps_lon,gps_lat); 
-//       strcat(gps_lon,","); 
-//       strcat(gps_lon,gps_alt);
-//       strcat(gps_lon,",");
-//       strcat(gps_lon,dht_dat[0]);
-//       strcat(gps_lon,"."); 
-//       strcat(gps_lon,dht_dat[1]);
-//       strcat(gps_lon,",");
-//       strcat(gps_lon,dht_dat[2]);
-//       strcat(gps_lon,".");
-//       strcat(gps_lon,dht_dat[3]);
-//       strcat(gps_lon,",");
-//       strcat(gps_lon,ppm);
-//       strcat(gps_lon,",");
-//       strcat(gps_lon,pir_count);
-//       strcat(gps_lon,",");
-//       strcat(gps_lon,G_sharp);
-//       strcat(gps_lon,",");
-//       strcat((char *)datasend,gps_lon);
-//       sprintf(datasend,"%d,%d,%d,%d.%d,%d.%d,%d,%d,%d,",gps_lon,gps_lat,gps_alt,dht_dat[0],dht_dat[1],dht_dat[2],dht_dat[3],(int)ppm,pir_count,G_sharp);
-//       Serial.println((char *)datasend);
-
+//       sprintf(url, "api.thingspeak.com/update?api_key=7JFN99ST9V99MUVX&field1=%d&field2=%d&field3=%d&field4=%d.%d&field5=%d.%d&field6=%d&field7=%d&field8=%d",gps_lon,gps_lat,gps_alt,dht_dat[0],dht_dat[1],dht_dat[2],dht_dat[3],(int)ppm,pir_count,G_sharp); // change api key accordingly
        
-       // send data
-//       if ( millis()-present > 25000 || upload_flag == 1)
-//        {
-//            rf95.send(datasend, sizeof(datasend));
-//            rf95.waitPacketSent();
-//            Serial.println("Sent via LoRa");
+       sprintf(datasend,"<%d>field1=%d&field2=%d&field3=%d&field4=%d.%d&field5=%d.%d&field6=%d&field7=%d&field8=%d",node_id,gps_lon,gps_lat,gps_alt,dht_dat[0],dht_dat[1],dht_dat[2],dht_dat[3],(int)ppm,pir_count,G_sharp);
+//       sprintf(url, "api.thingspeak.com/update?api_key=7JFN99ST9V99MUVX&field1=%d&field2=%d&field3=%d&field4=%d.%d&field5=%d.%d&field6=%d&field7=%d&field8=%d",gps_lon,gps_lat,gps_alt,dht_dat[0],dht_dat[1],dht_dat[2],dht_dat[3],(int)ppm,pir_count,G_sharp); // change api key accordingly
+       Serial.println((char *)datasend);
+
+            rf95.send(datasend, sizeof(datasend));
+            rf95.waitPacketSent();
+            Serial.println("Sent via LoRa");
 //            receivepacket();
 //            Serial.println("Recvd via LoRa");
+            delay(10000);
             sprintf(url, "api.thingspeak.com/update?api_key=SSOVZ5968BZYO34E&field1=%d&field2=%d&field3=%d&field4=%d.%d&field5=%d.%d&field6=%d&field7=%d&field8=%d",gps_lon,gps_lat,gps_alt,dht_dat[0],dht_dat[1],dht_dat[2],dht_dat[3],(int)ppm,pir_count,G_sharp); // change api key accordingly
             Serial.println((char *)url);
             upload_flag = 0;
             gsm.SendData(url);
             Serial.println("Sent via gsm");
-//        }
-//       present = millis();
-delay(20000);
-//       break;
-//     case 1:
-//        Serial.println("Error 1: DHT start condition 1 not met.");
-//        break;
-//     case 2:
-//        Serial.println("Error 2: DHT start condition 2 not met.");
-//        break;
-//     case 3:
-//        Serial.println("Error 3: DHT checksum error.");
-//        break;
-//     default:
-//        Serial.println("Error: Unrecognized code encountered.");
-//        break;
-//    }
-  
-   // Now wait for a reply
-//  }
-  smartdelay(3000);
+
+delay(10000);
+smartdelay(3000);
 }
 
 //If the packet arrive LG01, LG01 will send a ACK and here will receive it and turn on the led.  

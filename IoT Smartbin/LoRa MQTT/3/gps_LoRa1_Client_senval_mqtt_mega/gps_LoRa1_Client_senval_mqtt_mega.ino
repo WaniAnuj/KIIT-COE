@@ -1,28 +1,15 @@
-#include <TinyGPS.h>
 #include <SPI.h>
+#include <RH_RF95.h>
 #include <String.h>
 #include <MQ135.h>
-#include "GSM800Mega.h"
-#include <RH_RF95.h>
-
+#include <TinyGPS.h>
 
 TinyGPS gps;
 RH_RF95 rf95;
 
-static void smartdelay(unsigned long ms);
-
 int LED=13;
 
-//char DeviceID[10]="a840418"; //DeviceID or Device identifier in GPSWOX.com
-
-String datastring1="";
-String datastring2="";
-String datastring3="";
-uint8_t datasend[50];    //Storage  longtitude,latitude and altitude
-
-char gps_lon[20]={"\0"};  //Storage GPS info
-char gps_lat[20]={"\0"}; //Storage latitude
-char gps_alt[20]={"\0"}; //Storage altitude
+int node_id = 4652;
 
 #define dht_dpin A0 // Use A0 pin to connect the data line of DHT11
 byte bGlobalErr;
@@ -31,15 +18,19 @@ char dht_dat[5];
 #define mq135_pin A1
 MQ135 gasSensor = MQ135(mq135_pin); // MQ135 digital pin connected to pin number A2
 float ppm=0;
-
 bool PIR_flag = false;
 int pir_count;
 
 int G_sharp ;
 
-int upload_flag = 1;
-char url[80];
-unsigned long previous , present;
+String datastring1="";
+String datastring2="";
+String datastring3="";
+uint8_t datasend[100];    //Storage  longtitude,latitude and altitude
+
+char gps_lon[50]={"\0"};  //Storage GPS info
+char gps_lat[20]={"\0"}; //Storage latitude
+char gps_alt[20]={"\0"}; //Storage altitude
 
 void setup()
 {
@@ -49,29 +40,27 @@ void setup()
   attachInterrupt(digitalPinToInterrupt(2), pir_isr , FALLING);
   // initialize both serial ports:
   Serial.begin(9600);  // Serial to print out GPS info in Arduino IDE
-  Serial1.begin(9600);       // Serial1 port to get GPS data. 
+  Serial1.begin(9600);       // Second serial on mega port to get GPS data.
   while (!Serial);
 
-  if (!rf95.init()) {  // Defaults after init are 434.0MHz, 13dBm, Bw = 125 kHz, Cr = 4/5, Sf = 128chips/symbol, CRC on
+   if (!rf95.init()) {  // Defaults after init are 434.0MHz, 13dBm, Bw = 125 kHz, Cr = 4/5, Sf = 128chips/symbol, CRC on
     Serial.println("Starting LoRa failed!");
     while (1);
   }
-  gsm.Init();
-
+  
   /* Set frequency is 868MHz,SF is 7,SB is 125KHz,CR is 4/5 and Tx power is 20dBm */
   rf95.setFrequency(868);
   rf95.setSpreadingFactor(7);
   rf95.setSignalBandwidth(125E3);
   rf95.setCodingRate4(5);
+  rf95.setSyncWord(0x14);
   rf95.setTxPower(20,false);
   
   Serial.println("Ready to send!");
-  previous = millis();
-  present = millis();
 }
 
 void loop()
-{
+{  
   float flat, flon,falt;
   unsigned long age;
   gps.f_get_position(&flat, &flon, &age);
@@ -97,79 +86,14 @@ void loop()
   float distance = 65*pow(volts, -1.10);  
   G_sharp = distance*100;
   
-
-
-//switch (bGlobalErr)
-//   {
-//     case 0:
-//       Serial.print("Current humdity = ");
-//       Serial.print(dht_dat[0], DEC);
-//       Serial.print(".");
-//       Serial.print(dht_dat[1], DEC);
-//       Serial.print("%  ");
-//       Serial.print("temperature = ");
-//       Serial.print(dht_dat[2], DEC);
-//       Serial.print(".");
-//       Serial.print(dht_dat[3], DEC);
-//       Serial.println("C  ");
-//       strcat(gps_lon,",");
-//       strcat(gps_lon,gps_lat); 
-//       strcat(gps_lon,","); 
-//       strcat(gps_lon,gps_alt);
-//       strcat(gps_lon,",");
-//       strcat(gps_lon,dht_dat[0]);
-//       strcat(gps_lon,"."); 
-//       strcat(gps_lon,dht_dat[1]);
-//       strcat(gps_lon,",");
-//       strcat(gps_lon,dht_dat[2]);
-//       strcat(gps_lon,".");
-//       strcat(gps_lon,dht_dat[3]);
-//       strcat(gps_lon,",");
-//       strcat(gps_lon,ppm);
-//       strcat(gps_lon,",");
-//       strcat(gps_lon,pir_count);
-//       strcat(gps_lon,",");
-//       strcat(gps_lon,G_sharp);
-//       strcat(gps_lon,",");
-//       strcat((char *)datasend,gps_lon);
-//       sprintf(datasend,"%d,%d,%d,%d.%d,%d.%d,%d,%d,%d,",gps_lon,gps_lat,gps_alt,dht_dat[0],dht_dat[1],dht_dat[2],dht_dat[3],(int)ppm,pir_count,G_sharp);
-//       Serial.println((char *)datasend);
-
-       
-       // send data
-//       if ( millis()-present > 25000 || upload_flag == 1)
-//        {
-//            rf95.send(datasend, sizeof(datasend));
-//            rf95.waitPacketSent();
-//            Serial.println("Sent via LoRa");
-//            receivepacket();
-//            Serial.println("Recvd via LoRa");
-            sprintf(url, "api.thingspeak.com/update?api_key=SSOVZ5968BZYO34E&field1=%d&field2=%d&field3=%d&field4=%d.%d&field5=%d.%d&field6=%d&field7=%d&field8=%d",gps_lon,gps_lat,gps_alt,dht_dat[0],dht_dat[1],dht_dat[2],dht_dat[3],(int)ppm,pir_count,G_sharp); // change api key accordingly
-            Serial.println((char *)url);
-            upload_flag = 0;
-            gsm.SendData(url);
-            Serial.println("Sent via gsm");
-//        }
-//       present = millis();
-delay(20000);
-//       break;
-//     case 1:
-//        Serial.println("Error 1: DHT start condition 1 not met.");
-//        break;
-//     case 2:
-//        Serial.println("Error 2: DHT start condition 2 not met.");
-//        break;
-//     case 3:
-//        Serial.println("Error 3: DHT checksum error.");
-//        break;
-//     default:
-//        Serial.println("Error: Unrecognized code encountered.");
-//        break;
-//    }
+       sprintf(datasend,"<%d>field1=%d&field2=%d&field3=%d&field4=%d.%d&field5=%d.%d&field6=%d&field7=%d&field8=%d",node_id,gps_lat,gps_lon,gps_alt,dht_dat[0],dht_dat[1],dht_dat[2],dht_dat[3],(int)ppm,pir_count,G_sharp);
+       Serial.println((char *)datasend);
   
-   // Now wait for a reply
-//  }
-  smartdelay(3000);
+       rf95.send(datasend, sizeof(datasend));  
+       rf95.waitPacketSent();
+
+  receivepacket();
+  delay(16000);
 }
 
 //If the packet arrive LG01, LG01 will send a ACK and here will receive it and turn on the led.  
@@ -199,19 +123,6 @@ void receivepacket(){
     }
 }
 
-static void smartdelay(unsigned long ms)
-{
-  
-  unsigned long start = millis();
-  do 
-  {
-    while (Serial1.available())
-    {
-      //ss.print(Serial.read());
-      gps.encode(Serial1.read());
-    }
-  } while (millis() - start < ms);
-}
 
 // DHT
 void InitDHT() // Initiate DHT11
